@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sticker & Sq Ft Pricing Calculator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    max-width: 900px; margin: 0 auto; padding: 24px 20px 60px;
+    color: #2c2c2a; background: #fafaf8;
+  }
+  h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px; }
+  .sub { font-size: 13px; color: #6a6a66; margin: 0 0 20px; }
+  label { font-size: 13px; color: #6a6a66; display: block; margin-bottom: 4px; }
+  input[type="number"], input[type="text"], select {
+    height: 36px; padding: 0 10px; border: 1px solid #d8d6cc;
+    border-radius: 6px; font-size: 14px; background: #fff;
+  }
+  input[type="number"] { width: 100%; }
+  button {
+    height: 36px; padding: 0 12px; border: 1px solid #d8d6cc; border-radius: 6px;
+    background: #fff; cursor: pointer; font-size: 13px;
+  }
+  button:hover { background: #f1efe8; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid #e2e0d6; flex-wrap: wrap; }
+  .tab-btn {
+    border: none; border-bottom: 2px solid transparent; border-radius: 0;
+    padding: 8px 4px; background: transparent; color: #6a6a66; font-size: 14px;
+  }
+  .tab-btn.active { border-bottom-color: #185fa5; color: #2c2c2a; font-weight: 600; }
+  .row { display: grid; grid-template-columns: 260px 1fr; gap: 24px; margin-bottom: 8px; }
+  .field { margin-bottom: 12px; }
+  .gap-row { display: flex; gap: 8px; align-items: center; }
+  .checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #6a6a66; margin-bottom: 16px; }
+  .checkbox-row input { width: auto; }
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .card { background: #f1efe8; border-radius: 8px; padding: 1rem; }
+  .card p { margin: 0; }
+  .card .label { font-size: 13px; color: #6a6a66; margin-bottom: 4px; }
+  .card .value { font-size: 20px; font-weight: 600; }
+  .note { font-size: 12px; color: #8a8880; margin-top: 12px; line-height: 1.5; }
+  .svg-wrap { width: 260px; margin: 0 auto; }
+  .divider { border-top: 1px solid #e2e0d6; margin: 24px 0 20px; padding-top: 20px; }
+  .price-top { display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 16px; }
+  .bonus-card { background: #f1efe8; border-radius: 8px; padding: 0.75rem 1rem; align-self: flex-end; }
+  .bonus-card .label { font-size: 13px; color: #6a6a66; margin-bottom: 2px; }
+  .bonus-card .value { font-size: 16px; font-weight: 600; }
+  #materialList, #masterListContainer { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+  .mat-row, .master-row {
+    display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+    border: 1px solid #e2e0d6; border-radius: 6px; background: #fff;
+  }
+  .mat-row label { flex: 1; font-size: 14px; color: #2c2c2a; margin: 0; }
+  .mat-row .price-tag, .master-row .price-tag { font-size: 12px; color: #8a8880; }
+  .mat-row input[type="number"] { width: 90px; height: 30px; }
+  .master-row .master-name { flex: 1; }
+  .master-row .master-price { width: 90px; height: 30px; }
+  .master-remove-btn { border: none; background: none; color: #8a8880; cursor: pointer; font-size: 16px; padding: 2px 8px; height: auto; }
+  .lam-row { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 16px; }
+  .lam-row input { width: auto; }
+  .price-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+  .price-cards .accent { background: #e6f1fb; }
+  .price-cards .accent .value, .price-cards .accent .label { color: #0c447c; }
+  .download-btn { padding: 10px 16px; font-weight: 600; background: #185fa5; color: #fff; border: none; }
+  .download-btn:hover { background: #124a82; }
+  #pdfStatus, #sqPdfStatus { font-size: 12px; color: #8a8880; margin-left: 10px; }
+
+  .quote-item { border: 1px solid #e2e0d6; border-radius: 8px; padding: 1rem; margin-bottom: 12px; background: #fff; }
+  .item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .item-title { font-size: 13px; font-weight: 600; margin: 0; }
+  .remove-btn { border: none; background: none; color: #8a8880; cursor: pointer; font-size: 16px; padding: 2px 8px; height: auto; }
+  .item-dims { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .dim-block label { font-size: 12px; }
+  .dim-inputs { display: flex; gap: 6px; margin-bottom: 6px; }
+  .dim-inputs input { width: 75px; }
+  .dim-inputs select { height: 32px; }
+  .round-select { height: 30px; width: 100%; margin-bottom: 6px; font-size: 12px; }
+  .exact-line { font-size: 13px; color: #8a8880; margin: 0 0 2px; }
+  .rounded-line { font-size: 19px; font-weight: 700; margin: 0; color: #0c447c; line-height: 1.15; }
+  .area-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+  .area-round-select { height: 30px; font-size: 12px; }
+  .area-badge { background: #e6f1fb; border-radius: 6px; padding: 0.5rem 0.9rem; }
+  .area-badge .al { font-size: 10px; color: #0c447c; margin: 0; text-transform: uppercase; letter-spacing: 0.03em; }
+  .area-badge .av { font-size: 22px; font-weight: 700; margin: 0; color: #0c447c; line-height: 1.2; }
+  .area-badge .ae { font-size: 10px; color: #0c447c; margin: 0; opacity: 0.8; }
+  .item-controls { display: flex; gap: 10px; align-items: end; margin-bottom: 10px; flex-wrap: wrap; }
+  .item-controls label { font-size: 12px; }
+  .item-controls select.product-select { min-width: 150px; }
+  .item-controls input.price-input { width: 85px; }
+  .item-controls input.qty-input { width: 70px; }
+  .diecut-label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #6a6a66; white-space: nowrap; padding-bottom: 8px; }
+  .diecut-label input { width: auto; }
+  .line-total-row { text-align: right; border-top: 1px solid #e2e0d6; padding-top: 8px; }
+  .line-total-row .ll { font-size: 12px; color: #6a6a66; }
+  .line-total-row .lv { font-size: 18px; font-weight: 700; }
+  .grand-total-box { background: #e6f1fb; border-radius: 8px; padding: 1rem 1.5rem; min-width: 220px; text-align: right; }
+  .grand-total-box .label { font-size: 13px; color: #0c447c; margin: 0 0 4px; }
+  .grand-total-box .value { font-size: 28px; font-weight: 700; margin: 0; color: #0c447c; }
+
+  @media (max-width: 640px) {
+    body { padding: 16px 12px 40px; }
+    .row { grid-template-columns: 1fr; }
+    .svg-wrap { width: 100%; max-width: 280px; }
+    .price-cards { grid-template-columns: 1fr; }
+    .item-dims { grid-template-columns: 1fr; }
+    .tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .tab-btn { white-space: nowrap; }
+    .price-top { flex-direction: column; align-items: stretch; }
+    .bonus-card, .grand-total-box { text-align: left; }
+  }
+</style>
+</head>
+<body>
+
+<div class="tabs">
+  <button class="tab-btn active" id="tabCalcBtn" type="button">Sheet Calculator</button>
+  <button class="tab-btn" id="tabSqftBtn" type="button">Unit Converter & Sq Ft Pricing</button>
+  <button class="tab-btn" id="tabMasterBtn" type="button">Product Masterlist</button>
+</div>
+
+<div id="panelCalc">
+  <h1>Sticker layout & sheet pricing</h1>
+  <p class="sub">Artboard 13" x 19" (330.2 x 482.6mm), minus 10mm margin on all sides.</p>
+
+  <div class="row">
+    <div>
+      <div class="field">
+        <label for="sw">Sticker width (mm)</label>
+        <input type="number" id="sw" value="50" min="1" step="1">
+      </div>
+      <div class="field">
+        <label for="sh">Sticker height (mm)</label>
+        <input type="number" id="sh" value="50" min="1" step="1">
+      </div>
+      <div class="field">
+        <label for="gap">Gap between stickers (mm)</label>
+        <div class="gap-row">
+          <input type="number" id="gap" value="3" min="0" step="0.5" style="width:80px;">
+          <button id="gap3" type="button">3mm</button>
+          <button id="gap5" type="button">5mm</button>
+        </div>
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="autorotate" checked>
+        <label for="autorotate" style="margin:0;">Auto-rotate to fit more</label>
+      </div>
+      <div class="cards">
+        <div class="card"><p class="label">Layout</p><p class="value" id="layoutOut">10 x 12</p></div>
+        <div class="card"><p class="label">Per sheet</p><p class="value" id="totalOut">120</p></div>
+      </div>
+      <p class="note">Usable print area: 310.2 x 462.6mm.</p>
+    </div>
+    <div style="display:flex; align-items:flex-start; justify-content:center;">
+      <div id="svgWrap" class="svg-wrap"></div>
+    </div>
+  </div>
+
+  <div class="divider">
+    <div style="margin-bottom:16px;">
+      <label for="qtyPieces" style="font-weight:600;">Qty needed (pieces)</label>
+      <input type="number" id="qtyPieces" value="300" min="1" step="1" style="width:200px;">
+      <p style="font-size:13px; color:#0c447c; margin:8px 0 0; font-weight:500;" id="piecesFormulaOut">300pcs / 120pcs per sheet = 2.5, round up to 3 sheets needed, extra 60pcs</p>
+    </div>
+
+    <div class="price-top">
+      <div>
+        <label for="qtySheets">Qty of sheets</label>
+        <input type="number" id="qtySheets" value="3" min="1" step="1" style="width:160px;">
+        <p class="note" style="margin-top:4px;">Auto-filled from pieces above — you can still edit it manually.</p>
+      </div>
+      <div class="bonus-card" style="align-self:flex-start;">
+        <p class="label">Total stickers (sheets x per sheet)</p>
+        <p class="value" id="totalStickersOut">360</p>
+      </div>
+    </div>
+
+    <p class="sub" style="margin-bottom:8px;">Material — select one, price per sheet is editable for your quantity</p>
+    <div id="materialList"></div>
+
+    <div class="lam-row">
+      <input type="checkbox" id="mattlam">
+      <label for="mattlam" style="margin:0;">Matt lamination finishing (+RM1 per sheet)</label>
+    </div>
+
+    <div class="price-cards">
+      <div class="card"><p class="label">Price per sheet</p><p class="value" id="pricePerSheetOut" style="font-size:18px;">RM3.00</p></div>
+      <div class="card"><p class="label">Sheets</p><p class="value" id="qtyOut" style="font-size:18px;">100</p></div>
+      <div class="card accent"><p class="label">Total</p><p class="value" id="grandTotalOut">RM300.00</p></div>
+    </div>
+
+    <button id="downloadBtn" type="button" class="download-btn">Generate & Download Costing Summary (PDF)</button>
+    <span id="pdfStatus"></span>
+  </div>
+</div>
+
+<div id="panelSqft" style="display:none;">
+  <h1>Unit converter & sq ft product quote</h1>
+  <p class="sub">Add one row per item. Products come from the Product Masterlist tab.</p>
+
+  <div id="itemsContainer"></div>
+
+  <button id="addItemBtn" type="button" style="margin-bottom:20px;">+ Add Item</button>
+
+  <div class="divider">
+    <div class="lam-row">
+      <input type="checkbox" id="sstToggle">
+      <label for="sstToggle" style="margin:0;">Add 10% SST (based on items subtotal)</label>
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; margin-bottom:16px;">
+      <div class="grand-total-box">
+        <p class="label">Subtotal</p>
+        <p class="value" id="quoteSubtotalOut" style="font-size:16px;">RM0.00</p>
+        <p class="label" id="sstLineWrap" style="display:none; margin-top:6px;">SST (10%): <span id="quoteSstOut">RM0.00</span></p>
+        <p class="label" style="margin-top:6px;">Grand Total</p>
+        <p class="value" id="quoteGrandTotalOut">RM0.00</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:8px;">
+    <button id="sqDownloadBtn" type="button" class="download-btn">Generate & Download Quotation (PDF)</button>
+    <button id="sqCustomerDownloadBtn" type="button" class="download-btn">Generate & Download Customer Quotation (PDF)</button>
+  </div>
+  <span id="sqPdfStatus"></span>
+
+  <div class="note" style="margin-top:20px; line-height:1.8;">
+    1 ft = 30.48 cm &nbsp;|&nbsp; 1 ft = 12 in &nbsp;|&nbsp; 1 ft = 0.3048 m
+  </div>
+</div>
+
+<div id="panelMaster" style="display:none;">
+  <h1>Product masterlist</h1>
+  <p class="sub">Manage products here. Add, rename, reprice, or remove products — the Unit Converter &amp; Sq Ft Pricing tab picks these up automatically.</p>
+
+  <div id="masterListContainer"></div>
+
+  <button id="addProductBtn" type="button">+ Add Product</button>
+
+  <p class="note" style="margin-top:20px;">
+    Renaming or repricing here updates the dropdown options and default price shown when a product is first selected in a quote item. Existing quote items keep whatever RM/sf you already typed for them, so past line items aren't silently changed.
+  </p>
+</div>
+
+<script>
+function unitToFt(value, unit) {
+  if (unit === 'cm') return value / 30.48;
+  if (unit === 'inch') return value / 12;
+  if (unit === 'm') return value / 0.3048;
+  return value;
+}
+function ceilTo(value, increment) {
+  if (!increment || increment <= 0) return value;
+  return Math.ceil((value - 1e-9) / increment) * increment;
+}
+
+const inch = 25.4;
+const artboardW = 13 * inch;
+const artboardH = 19 * inch;
+const margin = 10;
+const usableW = artboardW - 2 * margin;
+const usableH = artboardH - 2 * margin;
+let stickersPerSheet = 0;
+let lastSVG = '';
+let sheetsAutoFilled = true;
+
+function fitCount(w, h, gap) {
+  const cols = Math.max(0, Math.floor((usableW + gap) / (w + gap)));
+  const rows = Math.max(0, Math.floor((usableH + gap) / (h + gap)));
+  return { cols, rows, total: cols * rows };
+}
+
+function updatePiecesFormula() {
+  const pieces = Math.max(1, parseInt(document.getElementById('qtyPieces').value) || 1);
+  const perSheet = stickersPerSheet;
+  const rawDivision = perSheet > 0 ? pieces / perSheet : 0;
+  const sheets = perSheet > 0 ? Math.ceil(rawDivision) : 0;
+  const produced = sheets * perSheet;
+  const extra = produced - pieces;
+  const rawStr = Number.isInteger(rawDivision) ? rawDivision.toString() : rawDivision.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+
+  let formula;
+  if (perSheet <= 0) {
+    formula = 'Set a sticker size first.';
+  } else if (extra > 0) {
+    formula = pieces + 'pcs / ' + perSheet + 'pcs per sheet = ' + rawStr + ', round up to ' + sheets + ' sheets needed, extra ' + extra + 'pcs';
+  } else {
+    formula = pieces + 'pcs / ' + perSheet + 'pcs per sheet = ' + sheets + ' sheets needed exactly';
+  }
+  document.getElementById('piecesFormulaOut').textContent = formula;
+
+  if (sheetsAutoFilled) {
+    document.getElementById('qtySheets').value = sheets;
+  }
+  renderPricing();
+}
+
+function renderLayout() {
+  const sw = Math.max(1, parseFloat(document.getElementById('sw').value) || 1);
+  const sh = Math.max(1, parseFloat(document.getElementById('sh').value) || 1);
+  const gap = Math.max(0, parseFloat(document.getElementById('gap').value) || 0);
+  const autorotate = document.getElementById('autorotate').checked;
+
+  const normal = fitCount(sw, sh, gap);
+  const rotated = fitCount(sh, sw, gap);
+
+  let use = normal, w = sw, h = sh;
+  if (autorotate && rotated.total > normal.total) {
+    use = rotated; w = sh; h = sw;
+  }
+
+  document.getElementById('layoutOut').textContent = use.cols + ' x ' + use.rows;
+  document.getElementById('totalOut').textContent = use.total.toLocaleString();
+  stickersPerSheet = use.total;
+
+  const usedW = use.cols > 0 ? use.cols * w + (use.cols - 1) * gap : 0;
+  const usedH = use.rows > 0 ? use.rows * h + (use.rows - 1) * gap : 0;
+  const leftoverW = (usableW - usedW) / 2;
+  const leftoverH = (usableH - usedH) / 2;
+
+  const offsetX = margin + Math.max(0, leftoverW);
+  const offsetY = margin + Math.max(0, leftoverH);
+
+  let rects = '';
+  for (let i = 0; i < use.cols; i++) {
+    for (let j = 0; j < use.rows; j++) {
+      const x = offsetX + i * (w + gap);
+      const y = offsetY + j * (h + gap);
+      rects += '<rect x="' + x.toFixed(2) + '" y="' + y.toFixed(2) + '" width="' + w.toFixed(2) + '" height="' + h.toFixed(2) + '" fill="#b5d4f4" stroke="#185fa5" stroke-width="0.6" rx="1"></rect>';
+    }
+  }
+
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + artboardW.toFixed(1) + ' ' + artboardH.toFixed(1) + '" width="' + artboardW.toFixed(1) + '" height="' + artboardH.toFixed(1) + '">' +
+    '<rect x="0" y="0" width="' + artboardW.toFixed(1) + '" height="' + artboardH.toFixed(1) + '" fill="#ffffff" stroke="#d8d6cc" stroke-width="1"></rect>' +
+    '<rect x="' + margin + '" y="' + margin + '" width="' + usableW.toFixed(1) + '" height="' + usableH.toFixed(1) + '" fill="none" stroke="#b4b2a9" stroke-width="0.8" stroke-dasharray="4 3"></rect>' +
+    rects +
+    '</svg>';
+  lastSVG = svg;
+
+  const displaySvg = svg.replace('width="' + artboardW.toFixed(1) + '" height="' + artboardH.toFixed(1) + '"', 'width="100%" style="display:block; border-radius:4px;"');
+  document.getElementById('svgWrap').innerHTML = displaySvg;
+
+  updatePiecesFormula();
+}
+
+document.getElementById('gap3').addEventListener('click', () => { document.getElementById('gap').value = 3; renderLayout(); });
+document.getElementById('gap5').addEventListener('click', () => { document.getElementById('gap').value = 5; renderLayout(); });
+['sw','sh','gap','autorotate'].forEach(id => {
+  document.getElementById(id).addEventListener('input', renderLayout);
+});
+
+document.getElementById('qtyPieces').addEventListener('input', () => {
+  sheetsAutoFilled = true;
+  updatePiecesFormula();
+});
+document.getElementById('qtySheets').addEventListener('input', () => {
+  sheetsAutoFilled = false;
+  renderPricing();
+});
+
+const materials = [
+  { id: 'oneside', name: 'One side printing', price: 3 },
+  { id: 'bothside', name: 'Both side printing', price: 5 },
+  { id: 'specialone', name: 'Special paper one side printing', price: 4 },
+  { id: 'specialboth', name: 'Special paper both side printing', price: 6 },
+  { id: 'mirrorcoat', name: 'Mirrorcoat sticker', price: 6 },
+  { id: 'pvc', name: 'PVC sticker', price: 7 }
+];
+
+const materialListEl = document.getElementById('materialList');
+materials.forEach((m, idx) => {
+  const row = document.createElement('div');
+  row.className = 'mat-row';
+  row.innerHTML =
+    '<input type="radio" name="material" id="mat_' + m.id + '" value="' + m.id + '" style="width:auto;" ' + (idx === 0 ? 'checked' : '') + '>' +
+    '<label for="mat_' + m.id + '">' + m.name + '</label>' +
+    '<span class="price-tag">RM</span>' +
+    '<input type="number" id="price_' + m.id + '" value="' + m.price.toFixed(2) + '" min="0" step="0.5">' +
+    '<span class="price-tag">/sheet</span>';
+  materialListEl.appendChild(row);
+});
+
+function currentPricingState() {
+  const qty = Math.max(1, parseFloat(document.getElementById('qtySheets').value) || 1);
+  const mattlam = document.getElementById('mattlam').checked;
+  const selected = document.querySelector('input[name="material"]:checked');
+  const matId = selected ? selected.value : materials[0].id;
+  const mat = materials.find(m => m.id === matId);
+  const priceInput = document.getElementById('price_' + mat.id);
+  const matPrice = Math.max(0, parseFloat(priceInput.value) || mat.price);
+  const lamPrice = mattlam ? 1 : 0;
+  const perSheet = matPrice + lamPrice;
+  const grandTotal = qty * perSheet;
+  return { qty, mat, matPrice, mattlam, lamPrice, perSheet, grandTotal };
+}
+
+function renderPricing() {
+  const s = currentPricingState();
+  document.getElementById('pricePerSheetOut').textContent = 'RM' + s.perSheet.toFixed(2);
+  document.getElementById('qtyOut').textContent = s.qty.toLocaleString();
+  document.getElementById('grandTotalOut').textContent = 'RM' + s.grandTotal.toFixed(2);
+  document.getElementById('totalStickersOut').textContent = (s.qty * stickersPerSheet).toLocaleString();
+}
+
+document.getElementById('mattlam').addEventListener('input', renderPricing);
+materialListEl.addEventListener('change', renderPricing);
+materialListEl.addEventListener('input', renderPricing);
+
+function buildSheetPdf(pngData) {
+  const s = currentPricingState();
+  const sw = document.getElementById('sw').value;
+  const sh = document.getElementById('sh').value;
+  const gap = document.getElementById('gap').value;
+  const layout = document.getElementById('layoutOut').textContent;
+  const perSheetCount = document.getElementById('totalOut').textContent;
+  const totalStickers = document.getElementById('totalStickersOut').textContent;
+  const piecesNeeded = document.getElementById('qtyPieces').value;
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const pageW = doc.internal.pageSize.getWidth();
+  let y = 50;
+
+  doc.setFontSize(18);
+  doc.setTextColor(30);
+  doc.text('Sticker Job Costing Summary', 40, y);
+  y += 18;
+  doc.setFontSize(10);
+  doc.setTextColor(120);
+  doc.text('Generated ' + new Date().toLocaleDateString(), 40, y);
+  y += 24;
+
+  let textX = 40;
+  let ty = y;
+  let pdfImgH = 0;
+
+  if (pngData) {
+    const pdfImgW = 170;
+    pdfImgH = pdfImgW * (artboardH / artboardW);
+    doc.setDrawColor(210);
+    doc.rect(40, y, pdfImgW, pdfImgH);
+    doc.addImage(pngData, 'PNG', 40, y, pdfImgW, pdfImgH);
+    textX = 240;
+    ty = y + 14;
+  } else {
+    doc.setFontSize(9);
+    doc.setTextColor(160);
+    doc.text('(Visual preview unavailable — showing figures only)', 40, y);
+    ty = y + 18;
+  }
+
+  doc.setFontSize(11);
+  doc.setTextColor(40);
+  const rows = [
+    ['Sticker size', sw + ' x ' + sh + ' mm'],
+    ['Gap between stickers', gap + ' mm'],
+    ['Artboard', '13" x 19" (330.2 x 482.6mm), 10mm margin'],
+    ['Layout', layout],
+    ['Stickers per sheet', perSheetCount],
+    ['Qty needed (pieces)', piecesNeeded],
+    ['Material', s.mat.name],
+    ['Material price / sheet', 'RM' + s.matPrice.toFixed(2)],
+    ['Matt lamination', s.mattlam ? ('+RM' + s.lamPrice.toFixed(2) + '/sheet') : 'No'],
+    ['Price per sheet (total)', 'RM' + s.perSheet.toFixed(2)],
+    ['Qty of sheets', s.qty.toLocaleString()],
+    ['Total stickers produced', totalStickers]
+  ];
+  rows.forEach(r => {
+    doc.setTextColor(110);
+    doc.text(String(r[0]) + ':', textX, ty);
+    doc.setTextColor(30);
+    doc.text(String(r[1]), textX + 150, ty);
+    ty += 18;
+  });
+
+  const totalsY = Math.max(y + pdfImgH + 40, ty + 20);
+  doc.setDrawColor(220);
+  doc.line(40, totalsY - 14, pageW - 40, totalsY - 14);
+  doc.setFontSize(16);
+  doc.setTextColor(24, 95, 165);
+  doc.setFont(undefined, 'bold');
+  doc.text('Grand Total: RM' + s.grandTotal.toFixed(2), 40, totalsY + 8);
+  doc.setFont(undefined, 'normal');
+
+  doc.save('sticker-costing-summary.pdf');
+}
+
+document.getElementById('downloadBtn').addEventListener('click', () => {
+  const statusEl = document.getElementById('pdfStatus');
+  statusEl.textContent = 'Generating...';
+
+  const svgBlob = new Blob([lastSVG], { type: 'image/svg+xml;charset=utf-8' });
+  const svgUrl = URL.createObjectURL(svgBlob);
+  const img = new Image();
+  img.onload = function () {
+    try {
+      const imgW = 500, imgH = Math.round(500 * (artboardH / artboardW));
+      const canvas = document.createElement('canvas');
+      canvas.width = imgW; canvas.height = imgH;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, imgW, imgH);
+      ctx.drawImage(img, 0, 0, imgW, imgH);
+      const pngData = canvas.toDataURL('image/png');
+      URL.revokeObjectURL(svgUrl);
+      buildSheetPdf(pngData);
+      statusEl.textContent = 'Downloaded.';
+    } catch (e) {
+      console.error(e);
+      buildSheetPdf(null);
+      statusEl.textContent = 'Downloaded (without visual).';
+    }
+    setTimeout(() => { statusEl.textContent = ''; }, 2500);
+  };
+  img.onerror = function () {
+    URL.revokeObjectURL(svgUrl);
+    buildSheetPdf(null);
+    statusEl.textContent = 'Downloaded (without visual).';
+    setTimeout(() => { statusEl.textContent = ''; }, 2500);
+  };
+  img.src = svgUrl;
+});
+
+renderLayout();
+
+/* ===== Product Masterlist ===== */
+let sqProducts = [
+  { id: 'sticker', name: 'Sticker', price: 5 },
+  { id: 'foamboard', name: 'Foamboard', price: 8 },
+  { id: 'highimpact', name: 'High impact', price: 10 },
+  { id: 'tarpaulin', name: 'Tarpaulin', price: 1.5 }
+];
+let masterCounter = 0;
+
+const masterListContainer = document.getElementById('masterListContainer');
+
+function renderMasterlist() {
+  masterListContainer.innerHTML = '';
+  sqProducts.forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'master-row';
+    row.dataset.id = p.id;
+    row.innerHTML =
+      '<input type="text" class="master-name" value="' + p.name.replace(/"/g, '&quot;') + '">' +
+      '<span class="price-tag">RM</span>' +
+      '<input type="number" class="master-price" value="' + p.price.toFixed(2) + '" min="0" step="0.5">' +
+      '<span class="price-tag">/sf</span>' +
+      '<button type="button" class="master-remove-btn">✕</button>';
+    masterListContainer.appendChild(row);
+  });
+}
+
+masterListContainer.addEventListener('input', (e) => {
+  const row = e.target.closest('.master-row');
+  if (!row) return;
+  const id = row.dataset.id;
+  const prod = sqProducts.find(p => p.id === id);
+  if (!prod) return;
+  if (e.target.classList.contains('master-name')) {
+    prod.name = e.target.value || 'Unnamed product';
+  } else if (e.target.classList.contains('master-price')) {
+    prod.price = Math.max(0, parseFloat(e.target.value) || 0);
+  }
+  syncProductDropdowns();
+});
+
+masterListContainer.addEventListener('click', (e) => {
+  const btn = e.target.closest('.master-remove-btn');
+  if (!btn) return;
+  if (sqProducts.length <= 1) return;
+  const row = btn.closest('.master-row');
+  const id = row.dataset.id;
+  sqProducts = sqProducts.filter(p => p.id !== id);
+  renderMasterlist();
+  syncProductDropdowns();
+});
+
+document.getElementById('addProductBtn').addEventListener('click', () => {
+  masterCounter++;
+  sqProducts.push({ id: 'custom_' + masterCounter, name: 'New Product', price: 0 });
+  renderMasterlist();
+  syncProductDropdowns();
+});
+
+renderMasterlist();
+
+/* ===== Multi-item Sq Ft quote builder ===== */
+const itemsContainer = document.getElementById('itemsContainer');
+let itemCounter = 0;
+
+function productOptionsHtml(selectedId) {
+  return sqProducts.map(p => '<option value="' + p.id + '"' + (p.id === selectedId ? ' selected' : '') + '>' + p.name + '</option>').join('');
+}
+
+function itemTemplate() {
+  const firstProd = sqProducts[0] || { id: '', price: 0 };
+  return '' +
+    '<div class="item-header"><p class="item-title">Item <span class="item-number">1</span></p>' +
+    '<button type="button" class="remove-btn" title="Remove item">✕</button></div>' +
+    '<div class="item-dims">' +
+      '<div class="dim-block">' +
+        '<label>Height</label>' +
+        '<div class="dim-inputs"><input type="number" class="h-input" value="100" step="any"><select class="h-unit"><option value="cm" selected>cm</option><option value="ft">ft</option><option value="inch">inch</option><option value="m">m</option></select></div>' +
+        '<select class="h-round round-select"><option value="0">No rounding</option><option value="0.5">Round up 0.5ft</option><option value="1" selected>Round up 1ft</option></select>' +
+        '<p class="exact-line">Exact: <span class="h-exact-out">—</span></p>' +
+        '<p class="rounded-line">Rounded: <span class="h-rounded-out">—</span></p>' +
+      '</div>' +
+      '<div class="dim-block">' +
+        '<label>Width</label>' +
+        '<div class="dim-inputs"><input type="number" class="w-input" value="90" step="any"><select class="w-unit"><option value="cm" selected>cm</option><option value="ft">ft</option><option value="inch">inch</option><option value="m">m</option></select></div>' +
+        '<select class="w-round round-select"><option value="0">No rounding</option><option value="0.5" selected>Round up 0.5ft</option><option value="1">Round up 1ft</option></select>' +
+        '<p class="exact-line">Exact: <span class="w-exact-out">—</span></p>' +
+        '<p class="rounded-line">Rounded: <span class="w-rounded-out">—</span></p>' +
+      '</div>' +
+    '</div>' +
+    '<div class="area-row">' +
+      '<div><label>Round area up to</label><select class="area-round area-round-select"><option value="0">No rounding</option><option value="0.5">0.5 sf</option><option value="1" selected>1 sf</option></select></div>' +
+      '<div class="area-badge"><p class="al">Area used for pricing</p><p class="av area-final-out">—</p><p class="ae">exact: <span class="area-exact-out">—</span> sf</p></div>' +
+    '</div>' +
+    '<div class="item-controls">' +
+      '<div><label>Product</label><select class="product-select">' + productOptionsHtml(firstProd.id) + '</select></div>' +
+      '<div><label>RM/sf</label><input type="number" class="price-input" value="' + firstProd.price.toFixed(2) + '" min="0" step="0.5"></div>' +
+      '<div><label>Qty</label><input type="number" class="qty-input" value="1" min="1" step="1"></div>' +
+      '<label class="diecut-label"><input type="checkbox" class="diecut-check"> Diecut (+RM1/sf)</label>' +
+    '</div>' +
+    '<div class="line-total-row"><span class="ll">Line total: </span><span class="lv line-total-out">RM0.00</span></div>';
+}
+
+function addItem() {
+  itemCounter++;
+  const row = document.createElement('div');
+  row.className = 'quote-item';
+  row.dataset.id = itemCounter;
+  row.innerHTML = itemTemplate();
+  itemsContainer.appendChild(row);
+  renumberItems();
+  recomputeAll();
+}
+
+function renumberItems() {
+  const rows = itemsContainer.querySelectorAll('.quote-item');
+  rows.forEach((row, idx) => {
+    row.querySelector('.item-number').textContent = idx + 1;
+  });
+}
+
+function recomputeRow(row) {
+  const hVal = parseFloat(row.querySelector('.h-input').value) || 0;
+  const hUnit = row.querySelector('.h-unit').value;
+  const hRoundInc = parseFloat(row.querySelector('.h-round').value) || 0;
+  const wVal = parseFloat(row.querySelector('.w-input').value) || 0;
+  const wUnit = row.querySelector('.w-unit').value;
+  const wRoundInc = parseFloat(row.querySelector('.w-round').value) || 0;
+  const areaRoundInc = parseFloat(row.querySelector('.area-round').value) || 0;
+  const qty = Math.max(1, parseFloat(row.querySelector('.qty-input').value) || 1);
+  const diecut = row.querySelector('.diecut-check').checked;
+  const prodPrice = Math.max(0, parseFloat(row.querySelector('.price-input').value) || 0);
+
+  const hFtExact = unitToFt(hVal, hUnit);
+  const wFtExact = unitToFt(wVal, wUnit);
+  const hFtRounded = ceilTo(hFtExact, hRoundInc);
+  const wFtRounded = ceilTo(wFtExact, wRoundInc);
+  const areaExact = hFtExact * wFtExact;
+  const areaFromRounded = hFtRounded * wFtRounded;
+  const areaFinal = ceilTo(areaFromRounded, areaRoundInc);
+
+  const diecutAdd = diecut ? 1 : 0;
+  const pricePerSf = prodPrice + diecutAdd;
+  const lineTotal = pricePerSf * areaFinal * qty;
+
+  row.querySelector('.h-exact-out').textContent = hFtExact.toFixed(2) + ' ft';
+  row.querySelector('.h-rounded-out').textContent = hFtRounded.toFixed(2) + ' ft';
+  row.querySelector('.w-exact-out').textContent = wFtExact.toFixed(2) + ' ft';
+  row.querySelector('.w-rounded-out').textContent = wFtRounded.toFixed(2) + ' ft';
+  row.querySelector('.area-exact-out').textContent = areaExact.toFixed(2);
+  row.querySelector('.area-final-out').textContent = areaFinal.toFixed(2) + ' sf';
+  row.querySelector('.line-total-out').textContent = 'RM' + lineTotal.toFixed(2);
+
+  const prodSelect = row.querySelector('.product-select');
+  const prod = sqProducts.find(p => p.id === prodSelect.value) || sqProducts[0] || { name: '—' };
+
+  return {
+    hVal, hUnit, wVal, wUnit, hFtExact, hFtRounded, wFtExact, wFtRounded,
+    areaExact, areaFinal, qty, diecut, prodName: prod.name, prodPrice, pricePerSf, lineTotal
+  };
+}
+
+function recomputeAll() {
+  const rows = itemsContainer.querySelectorAll('.quote-item');
+  let subtotal = 0;
+  rows.forEach(row => {
+    const r = recomputeRow(row);
+    subtotal += r.lineTotal;
+  });
+  const sstOn = document.getElementById('sstToggle').checked;
+  const sstAmount = sstOn ? subtotal * 0.1 : 0;
+  const grand = subtotal + sstAmount;
+
+  document.getElementById('quoteSubtotalOut').textContent = 'RM' + subtotal.toFixed(2);
+  document.getElementById('quoteSstOut').textContent = 'RM' + sstAmount.toFixed(2);
+  document.getElementById('sstLineWrap').style.display = sstOn ? 'block' : 'none';
+  document.getElementById('quoteGrandTotalOut').textContent = 'RM' + grand.toFixed(2);
+}
+
+function syncProductDropdowns() {
+  const rows = itemsContainer.querySelectorAll('.quote-item');
+  rows.forEach(row => {
+    const select = row.querySelector('.product-select');
+    const currentId = select.value;
+    const stillExists = sqProducts.some(p => p.id === currentId);
+    const fallback = sqProducts[0];
+    const newSelectedId = stillExists ? currentId : (fallback ? fallback.id : '');
+    select.innerHTML = productOptionsHtml(newSelectedId);
+    if (!stillExists && fallback) {
+      row.querySelector('.price-input').value = fallback.price.toFixed(2);
+    }
+  });
+  recomputeAll();
+}
+
+itemsContainer.addEventListener('input', () => {
+  recomputeAll();
+});
+itemsContainer.addEventListener('change', (e) => {
+  if (e.target.classList.contains('product-select')) {
+    const prod = sqProducts.find(p => p.id === e.target.value);
+    const row = e.target.closest('.quote-item');
+    if (prod) row.querySelector('.price-input').value = prod.price.toFixed(2);
+  }
+  recomputeAll();
+});
+itemsContainer.addEventListener('click', (e) => {
+  const btn = e.target.closest('.remove-btn');
+  if (btn) {
+    const row = btn.closest('.quote-item');
+    const rows = itemsContainer.querySelectorAll('.quote-item');
+    if (rows.length > 1) {
+      row.remove();
+      renumberItems();
+      recomputeAll();
+    }
+  }
+});
+
+document.getElementById('sstToggle').addEventListener('change', recomputeAll);
+
+document.getElementById('addItemBtn').addEventListener('click', addItem);
+addItem();
+
+document.getElementById('sqDownloadBtn').addEventListener('click', () => {
+  const statusEl = document.getElementById('sqPdfStatus');
+  statusEl.textContent = 'Generating...';
+  try {
+    const rows = itemsContainer.querySelectorAll('.quote-item');
+    const items = Array.from(rows).map(row => recomputeRow(row));
+    const subtotal = items.reduce((sum, it) => sum + it.lineTotal, 0);
+    const sstOn = document.getElementById('sstToggle').checked;
+    const sstAmount = sstOn ? subtotal * 0.1 : 0;
+    const grand = subtotal + sstAmount;
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const pageW = doc.internal.pageSize.getWidth();
+    let y = 50;
+
+    doc.setFontSize(18);
+    doc.setTextColor(30);
+    doc.text('Sq Ft Product Quotation', 40, y);
+    y += 18;
+    doc.setFontSize(10);
+    doc.setTextColor(120);
+    doc.text('Generated ' + new Date().toLocaleDateString(), 40, y);
+    y += 26;
+
+    const colX = { no: 40, size: 65, area: 175, prod: 230, rmsf: 320, diecut: 370, qty: 425, total: 465 };
+    doc.setFontSize(9);
+    doc.setTextColor(120);
+    doc.text('#', colX.no, y);
+    doc.text('H x W (rounded)', colX.size, y);
+    doc.text('Area', colX.area, y);
+    doc.text('Product', colX.prod, y);
+    doc.text('RM/sf', colX.rmsf, y);
+    doc.text('Diecut', colX.diecut, y);
+    doc.text('Qty', colX.qty, y);
+    doc.text('Line Total', colX.total, y);
+    y += 6;
+    doc.setDrawColor(200);
+    doc.line(40, y, pageW - 40, y);
+    y += 14;
+
+    doc.setFontSize(9);
+    items.forEach((it, idx) => {
+      if (y > 760) { doc.addPage(); y = 50; }
+      doc.setTextColor(30);
+      doc.text(String(idx + 1), colX.no, y);
+      doc.text(it.hFtRounded.toFixed(2) + ' x ' + it.wFtRounded.toFixed(2) + ' ft', colX.size, y);
+      doc.text(it.areaFinal.toFixed(2) + ' sf', colX.area, y);
+      doc.text(it.prodName, colX.prod, y);
+      doc.text('RM' + it.pricePerSf.toFixed(2), colX.rmsf, y);
+      doc.text(it.diecut ? 'Yes' : 'No', colX.diecut, y);
+      doc.text(String(it.qty), colX.qty, y);
+      doc.setFont(undefined, 'bold');
+      doc.text('RM' + it.lineTotal.toFixed(2), colX.total, y);
+      doc.setFont(undefined, 'normal');
+      y += 20;
+    });
+
+    y += 10;
+    doc.setDrawColor(200);
+    doc.line(40, y, pageW - 40, y);
+    y += 20;
+    doc.setFontSize(11);
+    doc.setTextColor(80);
+    doc.text('Subtotal: RM' + subtotal.toFixed(2), 40, y);
+    y += 16;
+    if (sstOn) {
+      doc.text('SST (10%): RM' + sstAmount.toFixed(2), 40, y);
+      y += 16;
+    }
+    y += 6;
+    doc.setFontSize(16);
+    doc.setTextColor(24, 95, 165);
+    doc.setFont(undefined, 'bold');
+    doc.text('Grand Total: RM' + grand.toFixed(2), 40, y);
+    doc.setFont(undefined, 'normal');
+
+    doc.save('sqft-quotation.pdf');
+    statusEl.textContent = 'Downloaded.';
+  } catch (e) {
+    console.error(e);
+    statusEl.textContent = 'PDF generation failed.';
+  }
+  setTimeout(() => { statusEl.textContent = ''; }, 2500);
+});
+
+document.getElementById('sqCustomerDownloadBtn').addEventListener('click', () => {
+  const statusEl = document.getElementById('sqPdfStatus');
+  statusEl.textContent = 'Generating...';
+  try {
+    const rows = itemsContainer.querySelectorAll('.quote-item');
+    const items = Array.from(rows).map(row => {
+      const r = recomputeRow(row);
+      const hRaw = row.querySelector('.h-input').value;
+      const hU = row.querySelector('.h-unit').value;
+      const wRaw = row.querySelector('.w-input').value;
+      const wU = row.querySelector('.w-unit').value;
+      r.sizeLabel = hRaw + hU + ' x ' + wRaw + wU;
+      return r;
+    });
+    const subtotal = items.reduce((sum, it) => sum + it.lineTotal, 0);
+    const sstOn = document.getElementById('sstToggle').checked;
+    const sstAmount = sstOn ? subtotal * 0.1 : 0;
+    const grand = subtotal + sstAmount;
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const pageW = doc.internal.pageSize.getWidth();
+    let y = 50;
+
+    doc.setFontSize(18);
+    doc.setTextColor(30);
+    doc.text('Quotation', 40, y);
+    y += 18;
+    doc.setFontSize(10);
+    doc.setTextColor(120);
+    doc.text('Generated ' + new Date().toLocaleDateString(), 40, y);
+    y += 16;
+    doc.setFontSize(9);
+    doc.setTextColor(140);
+    doc.text('Quotation Validity: Prices quoted are valid for 7 days from the quotation date.', 40, y);
+    y += 24;
+
+    const colX = { no: 40, size: 90, material: 220, qty: 380, total: 440 };
+    doc.setFontSize(10);
+    doc.setTextColor(120);
+    doc.text('#', colX.no, y);
+    doc.text('Size', colX.size, y);
+    doc.text('Material', colX.material, y);
+    doc.text('Qty', colX.qty, y);
+    doc.text('Total Price', colX.total, y);
+    y += 8;
+    doc.setDrawColor(200);
+    doc.line(40, y, pageW - 40, y);
+    y += 18;
+
+    doc.setFontSize(10);
+    items.forEach((it, idx) => {
+      if (y > 760) { doc.addPage(); y = 50; }
+      doc.setTextColor(30);
+      doc.text(String(idx + 1), colX.no, y);
+      doc.text(it.sizeLabel, colX.size, y);
+      doc.text(it.prodName, colX.material, y);
+      doc.text(String(it.qty), colX.qty, y);
+      doc.setFont(undefined, 'bold');
+      doc.text('RM' + it.lineTotal.toFixed(2), colX.total, y);
+      doc.setFont(undefined, 'normal');
+      y += 22;
+    });
+
+    y += 10;
+    doc.setDrawColor(200);
+    doc.line(40, y, pageW - 40, y);
+    y += 22;
+    doc.setFontSize(11);
+    doc.setTextColor(80);
+    doc.text('Subtotal: RM' + subtotal.toFixed(2), 40, y);
+    y += 16;
+    if (sstOn) {
+      doc.text('SST (10%): RM' + sstAmount.toFixed(2), 40, y);
+      y += 16;
+    }
+    y += 8;
+    doc.setFontSize(18);
+    doc.setTextColor(24, 95, 165);
+    doc.setFont(undefined, 'bold');
+    doc.text('Grand Total: RM' + grand.toFixed(2), 40, y);
+    doc.setFont(undefined, 'normal');
+
+    doc.save('customer-quotation.pdf');
+    statusEl.textContent = 'Downloaded.';
+  } catch (e) {
+    console.error(e);
+    statusEl.textContent = 'PDF generation failed.';
+  }
+  setTimeout(() => { statusEl.textContent = ''; }, 2500);
+});
+
+const tabCalcBtn = document.getElementById('tabCalcBtn');
+const tabSqftBtn = document.getElementById('tabSqftBtn');
+const tabMasterBtn = document.getElementById('tabMasterBtn');
+const panelCalc = document.getElementById('panelCalc');
+const panelSqft = document.getElementById('panelSqft');
+const panelMaster = document.getElementById('panelMaster');
+
+function activateTab(which) {
+  const map = {
+    calc: [panelCalc, tabCalcBtn],
+    sqft: [panelSqft, tabSqftBtn],
+    master: [panelMaster, tabMasterBtn]
+  };
+  Object.keys(map).forEach(key => {
+    const [panel, btn] = map[key];
+    if (key === which) {
+      panel.style.display = 'block';
+      btn.classList.add('active');
+    } else {
+      panel.style.display = 'none';
+      btn.classList.remove('active');
+    }
+  });
+}
+tabCalcBtn.addEventListener('click', () => activateTab('calc'));
+tabSqftBtn.addEventListener('click', () => activateTab('sqft'));
+tabMasterBtn.addEventListener('click', () => activateTab('master'));
+</script>
+</body>
+</html>
