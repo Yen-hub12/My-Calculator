@@ -159,14 +159,21 @@
   </div>
 
   <div class="divider">
+    <div style="margin-bottom:16px;">
+      <label for="qtyPieces" style="font-weight:600;">Qty needed (pieces)</label>
+      <input type="number" id="qtyPieces" value="300" min="1" step="1" style="width:200px;">
+      <p style="font-size:13px; color:#0c447c; margin:8px 0 0; font-weight:500;" id="piecesFormulaOut">300pcs / 120pcs per sheet = 2.5, round up to 3 sheets needed, extra 60pcs</p>
+    </div>
+
     <div class="price-top">
       <div>
         <label for="qtySheets">Qty of sheets</label>
-        <input type="number" id="qtySheets" value="100" min="1" step="1" style="width:160px;">
+        <input type="number" id="qtySheets" value="3" min="1" step="1" style="width:160px;">
+        <p class="note" style="margin-top:4px;">Auto-filled from pieces above — you can still edit it manually.</p>
       </div>
-      <div class="bonus-card">
+      <div class="bonus-card" style="align-self:flex-start;">
         <p class="label">Total stickers (sheets x per sheet)</p>
-        <p class="value" id="totalStickersOut">12,000</p>
+        <p class="value" id="totalStickersOut">360</p>
       </div>
     </div>
 
@@ -197,14 +204,27 @@
 
   <button id="addItemBtn" type="button" style="margin-bottom:20px;">+ Add Item</button>
 
-  <div style="display:flex; justify-content:flex-end; margin-bottom:16px;">
-    <div class="grand-total-box">
-      <p class="label">Grand Total (all items)</p>
-      <p class="value" id="quoteGrandTotalOut">RM0.00</p>
+  <div class="divider">
+    <div class="lam-row">
+      <input type="checkbox" id="sstToggle">
+      <label for="sstToggle" style="margin:0;">Add 10% SST (based on items subtotal)</label>
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; margin-bottom:16px;">
+      <div class="grand-total-box">
+        <p class="label">Subtotal</p>
+        <p class="value" id="quoteSubtotalOut" style="font-size:16px;">RM0.00</p>
+        <p class="label" id="sstLineWrap" style="display:none; margin-top:6px;">SST (10%): <span id="quoteSstOut">RM0.00</span></p>
+        <p class="label" style="margin-top:6px;">Grand Total</p>
+        <p class="value" id="quoteGrandTotalOut">RM0.00</p>
+      </div>
     </div>
   </div>
 
-  <button id="sqDownloadBtn" type="button" class="download-btn">Generate & Download Quotation (PDF)</button>
+  <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:8px;">
+    <button id="sqDownloadBtn" type="button" class="download-btn">Generate & Download Quotation (PDF)</button>
+    <button id="sqCustomerDownloadBtn" type="button" class="download-btn">Generate & Download Customer Quotation (PDF)</button>
+  </div>
   <span id="sqPdfStatus"></span>
 
   <div class="note" style="margin-top:20px; line-height:1.8;">
@@ -245,11 +265,37 @@ const usableW = artboardW - 2 * margin;
 const usableH = artboardH - 2 * margin;
 let stickersPerSheet = 0;
 let lastSVG = '';
+let sheetsAutoFilled = true;
 
 function fitCount(w, h, gap) {
   const cols = Math.max(0, Math.floor((usableW + gap) / (w + gap)));
   const rows = Math.max(0, Math.floor((usableH + gap) / (h + gap)));
   return { cols, rows, total: cols * rows };
+}
+
+function updatePiecesFormula() {
+  const pieces = Math.max(1, parseInt(document.getElementById('qtyPieces').value) || 1);
+  const perSheet = stickersPerSheet;
+  const rawDivision = perSheet > 0 ? pieces / perSheet : 0;
+  const sheets = perSheet > 0 ? Math.ceil(rawDivision) : 0;
+  const produced = sheets * perSheet;
+  const extra = produced - pieces;
+  const rawStr = Number.isInteger(rawDivision) ? rawDivision.toString() : rawDivision.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+
+  let formula;
+  if (perSheet <= 0) {
+    formula = 'Set a sticker size first.';
+  } else if (extra > 0) {
+    formula = pieces + 'pcs / ' + perSheet + 'pcs per sheet = ' + rawStr + ', round up to ' + sheets + ' sheets needed, extra ' + extra + 'pcs';
+  } else {
+    formula = pieces + 'pcs / ' + perSheet + 'pcs per sheet = ' + sheets + ' sheets needed exactly';
+  }
+  document.getElementById('piecesFormulaOut').textContent = formula;
+
+  if (sheetsAutoFilled) {
+    document.getElementById('qtySheets').value = sheets;
+  }
+  renderPricing();
 }
 
 function renderLayout() {
@@ -297,13 +343,22 @@ function renderLayout() {
   const displaySvg = svg.replace('width="' + artboardW.toFixed(1) + '" height="' + artboardH.toFixed(1) + '"', 'width="100%" style="display:block; border-radius:4px;"');
   document.getElementById('svgWrap').innerHTML = displaySvg;
 
-  renderPricing();
+  updatePiecesFormula();
 }
 
 document.getElementById('gap3').addEventListener('click', () => { document.getElementById('gap').value = 3; renderLayout(); });
 document.getElementById('gap5').addEventListener('click', () => { document.getElementById('gap').value = 5; renderLayout(); });
 ['sw','sh','gap','autorotate'].forEach(id => {
   document.getElementById(id).addEventListener('input', renderLayout);
+});
+
+document.getElementById('qtyPieces').addEventListener('input', () => {
+  sheetsAutoFilled = true;
+  updatePiecesFormula();
+});
+document.getElementById('qtySheets').addEventListener('input', () => {
+  sheetsAutoFilled = false;
+  renderPricing();
 });
 
 const materials = [
@@ -350,7 +405,6 @@ function renderPricing() {
   document.getElementById('totalStickersOut').textContent = (s.qty * stickersPerSheet).toLocaleString();
 }
 
-document.getElementById('qtySheets').addEventListener('input', renderPricing);
 document.getElementById('mattlam').addEventListener('input', renderPricing);
 materialListEl.addEventListener('change', renderPricing);
 materialListEl.addEventListener('input', renderPricing);
@@ -363,6 +417,7 @@ function buildSheetPdf(pngData) {
   const layout = document.getElementById('layoutOut').textContent;
   const perSheetCount = document.getElementById('totalOut').textContent;
   const totalStickers = document.getElementById('totalStickersOut').textContent;
+  const piecesNeeded = document.getElementById('qtyPieces').value;
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
@@ -405,12 +460,13 @@ function buildSheetPdf(pngData) {
     ['Artboard', '13" x 19" (330.2 x 482.6mm), 10mm margin'],
     ['Layout', layout],
     ['Stickers per sheet', perSheetCount],
+    ['Qty needed (pieces)', piecesNeeded],
     ['Material', s.mat.name],
     ['Material price / sheet', 'RM' + s.matPrice.toFixed(2)],
     ['Matt lamination', s.mattlam ? ('+RM' + s.lamPrice.toFixed(2) + '/sheet') : 'No'],
     ['Price per sheet (total)', 'RM' + s.perSheet.toFixed(2)],
     ['Qty of sheets', s.qty.toLocaleString()],
-    ['Total stickers', totalStickers]
+    ['Total stickers produced', totalStickers]
   ];
   rows.forEach(r => {
     doc.setTextColor(110);
@@ -547,14 +603,14 @@ function itemTemplate() {
     '<div class="item-dims">' +
       '<div class="dim-block">' +
         '<label>Height</label>' +
-        '<div class="dim-inputs"><input type="number" class="h-input" value="4" step="any"><select class="h-unit"><option value="ft">ft</option><option value="cm">cm</option><option value="inch">inch</option><option value="m">m</option></select></div>' +
+        '<div class="dim-inputs"><input type="number" class="h-input" value="100" step="any"><select class="h-unit"><option value="cm" selected>cm</option><option value="ft">ft</option><option value="inch">inch</option><option value="m">m</option></select></div>' +
         '<select class="h-round round-select"><option value="0">No rounding</option><option value="0.5">Round up 0.5ft</option><option value="1" selected>Round up 1ft</option></select>' +
         '<p class="exact-line">Exact: <span class="h-exact-out">—</span></p>' +
         '<p class="rounded-line">Rounded: <span class="h-rounded-out">—</span></p>' +
       '</div>' +
       '<div class="dim-block">' +
         '<label>Width</label>' +
-        '<div class="dim-inputs"><input type="number" class="w-input" value="3" step="any"><select class="w-unit"><option value="ft">ft</option><option value="cm">cm</option><option value="inch">inch</option><option value="m">m</option></select></div>' +
+        '<div class="dim-inputs"><input type="number" class="w-input" value="90" step="any"><select class="w-unit"><option value="cm" selected>cm</option><option value="ft">ft</option><option value="inch">inch</option><option value="m">m</option></select></div>' +
         '<select class="w-round round-select"><option value="0">No rounding</option><option value="0.5" selected>Round up 0.5ft</option><option value="1">Round up 1ft</option></select>' +
         '<p class="exact-line">Exact: <span class="w-exact-out">—</span></p>' +
         '<p class="rounded-line">Rounded: <span class="w-rounded-out">—</span></p>' +
@@ -634,11 +690,18 @@ function recomputeRow(row) {
 
 function recomputeAll() {
   const rows = itemsContainer.querySelectorAll('.quote-item');
-  let grand = 0;
+  let subtotal = 0;
   rows.forEach(row => {
     const r = recomputeRow(row);
-    grand += r.lineTotal;
+    subtotal += r.lineTotal;
   });
+  const sstOn = document.getElementById('sstToggle').checked;
+  const sstAmount = sstOn ? subtotal * 0.1 : 0;
+  const grand = subtotal + sstAmount;
+
+  document.getElementById('quoteSubtotalOut').textContent = 'RM' + subtotal.toFixed(2);
+  document.getElementById('quoteSstOut').textContent = 'RM' + sstAmount.toFixed(2);
+  document.getElementById('sstLineWrap').style.display = sstOn ? 'block' : 'none';
   document.getElementById('quoteGrandTotalOut').textContent = 'RM' + grand.toFixed(2);
 }
 
@@ -682,6 +745,8 @@ itemsContainer.addEventListener('click', (e) => {
   }
 });
 
+document.getElementById('sstToggle').addEventListener('change', recomputeAll);
+
 document.getElementById('addItemBtn').addEventListener('click', addItem);
 addItem();
 
@@ -691,7 +756,10 @@ document.getElementById('sqDownloadBtn').addEventListener('click', () => {
   try {
     const rows = itemsContainer.querySelectorAll('.quote-item');
     const items = Array.from(rows).map(row => recomputeRow(row));
-    const grand = items.reduce((sum, it) => sum + it.lineTotal, 0);
+    const subtotal = items.reduce((sum, it) => sum + it.lineTotal, 0);
+    const sstOn = document.getElementById('sstToggle').checked;
+    const sstAmount = sstOn ? subtotal * 0.1 : 0;
+    const grand = subtotal + sstAmount;
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'pt', format: 'a4' });
@@ -743,7 +811,16 @@ document.getElementById('sqDownloadBtn').addEventListener('click', () => {
     y += 10;
     doc.setDrawColor(200);
     doc.line(40, y, pageW - 40, y);
-    y += 22;
+    y += 20;
+    doc.setFontSize(11);
+    doc.setTextColor(80);
+    doc.text('Subtotal: RM' + subtotal.toFixed(2), 40, y);
+    y += 16;
+    if (sstOn) {
+      doc.text('SST (10%): RM' + sstAmount.toFixed(2), 40, y);
+      y += 16;
+    }
+    y += 6;
     doc.setFontSize(16);
     doc.setTextColor(24, 95, 165);
     doc.setFont(undefined, 'bold');
@@ -751,6 +828,98 @@ document.getElementById('sqDownloadBtn').addEventListener('click', () => {
     doc.setFont(undefined, 'normal');
 
     doc.save('sqft-quotation.pdf');
+    statusEl.textContent = 'Downloaded.';
+  } catch (e) {
+    console.error(e);
+    statusEl.textContent = 'PDF generation failed.';
+  }
+  setTimeout(() => { statusEl.textContent = ''; }, 2500);
+});
+
+document.getElementById('sqCustomerDownloadBtn').addEventListener('click', () => {
+  const statusEl = document.getElementById('sqPdfStatus');
+  statusEl.textContent = 'Generating...';
+  try {
+    const rows = itemsContainer.querySelectorAll('.quote-item');
+    const items = Array.from(rows).map(row => {
+      const r = recomputeRow(row);
+      const hRaw = row.querySelector('.h-input').value;
+      const hU = row.querySelector('.h-unit').value;
+      const wRaw = row.querySelector('.w-input').value;
+      const wU = row.querySelector('.w-unit').value;
+      r.sizeLabel = hRaw + hU + ' x ' + wRaw + wU;
+      return r;
+    });
+    const subtotal = items.reduce((sum, it) => sum + it.lineTotal, 0);
+    const sstOn = document.getElementById('sstToggle').checked;
+    const sstAmount = sstOn ? subtotal * 0.1 : 0;
+    const grand = subtotal + sstAmount;
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const pageW = doc.internal.pageSize.getWidth();
+    let y = 50;
+
+    doc.setFontSize(18);
+    doc.setTextColor(30);
+    doc.text('Quotation', 40, y);
+    y += 18;
+    doc.setFontSize(10);
+    doc.setTextColor(120);
+    doc.text('Generated ' + new Date().toLocaleDateString(), 40, y);
+    y += 16;
+    doc.setFontSize(9);
+    doc.setTextColor(140);
+    doc.text('Quotation Validity: Prices quoted are valid for 7 days from the quotation date.', 40, y);
+    y += 24;
+
+    const colX = { no: 40, size: 90, material: 220, qty: 380, total: 440 };
+    doc.setFontSize(10);
+    doc.setTextColor(120);
+    doc.text('#', colX.no, y);
+    doc.text('Size', colX.size, y);
+    doc.text('Material', colX.material, y);
+    doc.text('Qty', colX.qty, y);
+    doc.text('Total Price', colX.total, y);
+    y += 8;
+    doc.setDrawColor(200);
+    doc.line(40, y, pageW - 40, y);
+    y += 18;
+
+    doc.setFontSize(10);
+    items.forEach((it, idx) => {
+      if (y > 760) { doc.addPage(); y = 50; }
+      doc.setTextColor(30);
+      doc.text(String(idx + 1), colX.no, y);
+      doc.text(it.sizeLabel, colX.size, y);
+      doc.text(it.prodName, colX.material, y);
+      doc.text(String(it.qty), colX.qty, y);
+      doc.setFont(undefined, 'bold');
+      doc.text('RM' + it.lineTotal.toFixed(2), colX.total, y);
+      doc.setFont(undefined, 'normal');
+      y += 22;
+    });
+
+    y += 10;
+    doc.setDrawColor(200);
+    doc.line(40, y, pageW - 40, y);
+    y += 22;
+    doc.setFontSize(11);
+    doc.setTextColor(80);
+    doc.text('Subtotal: RM' + subtotal.toFixed(2), 40, y);
+    y += 16;
+    if (sstOn) {
+      doc.text('SST (10%): RM' + sstAmount.toFixed(2), 40, y);
+      y += 16;
+    }
+    y += 8;
+    doc.setFontSize(18);
+    doc.setTextColor(24, 95, 165);
+    doc.setFont(undefined, 'bold');
+    doc.text('Grand Total: RM' + grand.toFixed(2), 40, y);
+    doc.setFont(undefined, 'normal');
+
+    doc.save('customer-quotation.pdf');
     statusEl.textContent = 'Downloaded.';
   } catch (e) {
     console.error(e);
